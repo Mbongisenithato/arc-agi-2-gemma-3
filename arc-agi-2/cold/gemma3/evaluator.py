@@ -1,48 +1,44 @@
 import json
-import importlib
-import sys
+import importlib.util
+import os
 
-def load_task(path):
-    """
-    Load a task JSON file from the given path.
-    """
-    with open(path) as f:
+def load_task(task_id, base_dir="gemma3"):
+    """Load task JSON data given a task ID and base directory."""
+    task_path = os.path.join(base_dir, f"{task_id}.json")
+    with open(task_path, "r") as f:
         return json.load(f)
 
-def evaluate(p, task):
-    """
-    Evaluate a function `p` against all input-output pairs in task.
+def evaluate(task_id, base_dir="gemma3"):
+    """Evaluate a task by running its solution against all samples."""
+    task_data = load_task(task_id, base_dir)
+    solution_path = os.path.join(base_dir, f"{task_id}.py")
 
-    Args:
-        p (function): The solution function to test.
-        task (dict): The task dictionary containing train/test/
-arc-gen pairs.
-
-    Returns:
-        bool: True if all outputs match, False otherwise.
-    """
-    all_pairs = task.get("train", []) + task.get("test", []) + task.
-get("arc-gen", [])
-    return all(p(pair["input"]) == pair["output"] for pair in 
-all_pairs)
-
-def main(task_id):
-    """
-    Dynamically import and evaluate a task module by ID.
-    """
     try:
-        task_module = importlib.import_module(task_id)
-        p = getattr(task_module, "p")
-        get_task = getattr(task_module, "get_task")
-    except (ImportError, AttributeError) as e:
-        print(f"❌ Failed to load task module '{task_id}': {e}")
-        sys.exit(1)
+        # Dynamically import the solution module
+        spec = importlib.util.spec_from_file_location("solution", solution_path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
 
-    task = get_task()
-    print(f"✅ Loaded task: {task['metadata']['task_id']}")
-    result = evaluate(p, task)
-    print(f"🧪 Evaluation result: {result}")
+        # Evaluate all train and test samples
+        all_pairs = task_data.get("train", []) + task_data.get("test", [])
+        for i, pair in enumerate(all_pairs):
+            predicted = module.solve(pair["input"])
+            expected = pair["output"]
+            if predicted != expected:
+                print(f"{task_id}: ❌ Failed on sample {i}")
+                print("Input:    ", pair["input"])
+                print("Expected: ", expected)
+                print("Predicted:", predicted)
+                return False  # Fail fast on first mismatch
 
+        return True  # All samples passed
+
+    except Exception as e:
+        print(f"{task_id}: ⚠️ Error → {e}")
+        return False
+
+# Run single task
 if __name__ == "__main__":
-    task_id = "task001"  # You can make this dynamic later
-    main(task_id)
+    task_id = "task001"  # Change this to evaluate other tasks
+    result = evaluate(task_id)
+    print(f"{task_id}: {'✅ Passed' if result else '❌ Failed'}")
