@@ -1,20 +1,14 @@
-import importlib
-from evaluator import evaluate, load_task
+from evaluator import evaluate
 
-task_modules = ["task001", "task002", "task003"]
+task_ids = ["task001", "task002", "task003"]
 
 def run_all_tasks():
-    for module_name in task_modules:
+    for task_id in task_ids:
         try:
-            module = importlib.import_module(module_name)
-            p = getattr(module, "p")
-            get_task = getattr(module, "get_task")
-            task = get_task()
-            print(f"✅ Loaded {module_name}: {task['metadata']['task_id']}")
-            result = evaluate(p, task)
-            print(f"🧪 {module_name} result: {result}")
+            result = evaluate(task_id)
+            print(f"{task_id}: {'✅ Passed' if result else '❌ Failed'}")
         except Exception as e:
-            print(f"❌ Error in {module_name}: {e}")
+            print(f"❌ Error in {task_id}: {e}")
 
 if __name__ == "__main__":
     run_all_tasks()
