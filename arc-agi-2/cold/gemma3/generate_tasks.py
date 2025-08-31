@@ -1,4 +1,9 @@
 import json
+import zipfile
+from pathlib import Path
+
+# 📁 Base directory resolution
+BASE_DIR = Path(__file__).parent.resolve()
 
 def create_task_json(task_id, train_data, test_data, metadata):
     task = {
@@ -6,7 +11,8 @@ def create_task_json(task_id, train_data, test_data, metadata):
         "test": test_data,
         "metadata": metadata
     }
-    with open(f"task{task_id:03}.json", "w") as f:
+    task_file = BASE_DIR / f"task{task_id:03}.json"
+    with open(task_file, "w") as f:
         json.dump(task, f, indent=2)
 
 # 🔧 Task 001: Grid inversion
@@ -58,35 +64,25 @@ create_task_json(
 )
 
 # 🗜️ Package submission files
-with zipfile.ZipFile("submission.zip", "w") as zipf:
-    zipf.write("task001.py")
-    zipf.write("task002.py")
-    zipf.write("task003.py")
-    zipf.write("model_runner.py")
-    zipf.write("generate-tasks.py")
-    zipf.write("evalutor.py")
-    try:
-        zipf.write("predict.py")  # Optional
-    except FileNotFoundError:
-        print("predict.py not found — skipping.")
+files_to_zip = [
+    "task001.py",
+    "task002.py",
+    "task003.py",
+    "model_runner.py",
+    "generate-tasks.py",
+    "evaluator.py",
+    "evaluator_batch.py",
+    "solution_writer.py",
+    "batch_writer.py"  # Optional
+]
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+with zipfile.ZipFile(BASE_DIR / "submission.zip", "w") as zipf:
+    for filename in files_to_zip:
+        file_path = BASE_DIR / filename
+        if file_path.exists():
+            zipf.write(file_path, arcname=filename)
+        else:
+            print(f"{filename} not found — skipping.")
 
 
 
